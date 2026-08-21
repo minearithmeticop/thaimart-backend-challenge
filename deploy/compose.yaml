@@ -1,0 +1,22 @@
+# Local development infrastructure.
+# Usage: docker compose -f deploy/compose.yaml up -d
+
+name: thaimart
+
+services:
+  mongo:
+    image: mongo:8
+    container_name: thaimart-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  mongo_data:
