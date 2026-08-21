@@ -33,3 +33,21 @@ Tear down:
 docker compose -f deploy/compose.yaml down        # keep data
 docker compose -f deploy/compose.yaml down -v     # wipe data volume too
 ```
+
+## Browse the data with mongo-express (optional)
+
+mongo-express is a web UI for MongoDB. It is not started by default; add
+the `tools` profile when you want it:
+
+```bash
+docker compose -f deploy/compose.yaml --profile tools up -d
+```
+
+Then open <http://localhost:8081> and sign in with:
+
+- Username: `admin`
+- Password: `P@assw0rd1`
+
+The API database is `thaimart` (collection `users`). Test leftovers live
+in `thaimart_test_*` databases. To stop everything again, use the tear
+down commands above.

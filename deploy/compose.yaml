@@ -1,5 +1,6 @@
 # Local development infrastructure.
-# Usage: docker compose -f deploy/compose.yaml up -d
+# Usage:            docker compose -f deploy/compose.yaml up -d
+# With the data UI: docker compose -f deploy/compose.yaml --profile tools up -d
 
 name: thaimart
 
@@ -17,6 +18,22 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
+
+  # Web UI for browsing MongoDB data. Opt-in via the "tools" profile so it
+  # only runs when asked for.
+  mongo-express:
+    image: mongo-express:1
+    container_name: thaimart-mongo-express
+    profiles: ["tools"]
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongo:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: "P@assw0rd1"
+    depends_on:
+      mongo:
+        condition: service_healthy
 
 volumes:
   mongo_data:
