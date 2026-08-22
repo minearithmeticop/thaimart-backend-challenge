@@ -18,6 +18,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 
+	"github.com/minearithmeticop/thaimart-backend-challenge/internal/config"
 	"github.com/minearithmeticop/thaimart-backend-challenge/internal/platform/httpapi"
 )
 
@@ -30,35 +31,39 @@ func main() {
 }
 
 func run() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	logger := newLogger(cfg.LogFormat)
+	slog.SetDefault(logger)
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	uri := envOr("MONGO_URI", "mongodb://localhost:27017")
-	addr := envOr("HTTP_ADDR", ":8080")
-
 	// The v2 driver connects lazily; the ping is what actually proves the
 	// URI works, so a misconfigured environment fails fast at startup.
-	client, err := mongo.Connect(options.Client().ApplyURI(uri))
+	client, err := mongo.Connect(options.Client().ApplyURI(cfg.MongoURI))
 	if err != nil {
 		return fmt.Errorf("creating mongo client: %w", err)
 	}
 	pingCtx, cancelPing := context.WithTimeout(ctx, 10*time.Second)
 	defer cancelPing()
 	if err := client.Ping(pingCtx, readpref.Primary()); err != nil {
-		return fmt.Errorf("pinging mongo at %s: %w", uri, err)
+		return fmt.Errorf("pinging mongo at %s: %w", cfg.MongoURI, err)
 	}
-	slog.Info("mongo connected", "uri", uri)
+	slog.Info("mongo connected", "uri", cfg.MongoURI, "db", cfg.MongoDB)
 	defer client.Disconnect(context.Background())
 
 	srv := &http.Server{
-		Addr:              addr,
+		Addr:              cfg.HTTPAddr,
 		Handler:           httpapi.NewRouter(mongoPinger{client}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	errCh := make(chan error, 1)
 	go func() {
-		slog.Info("http server listening", "addr", addr)
+		slog.Info("http server listening", "addr", cfg.HTTPAddr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
 		}
@@ -83,9 +88,9 @@ func (p mongoPinger) Ping(ctx context.Context) error {
 	return p.client.Ping(ctx, readpref.Primary())
 }
 
-func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
+func newLogger(format string) *slog.Logger {
+	if format == "json" {
+		return slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	}
-	return fallback
+	return slog.New(slog.NewTextHandler(os.Stdout, nil))
 }
