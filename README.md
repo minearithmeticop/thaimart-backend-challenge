@@ -25,10 +25,15 @@ curl http://localhost:8080/healthz
 
 Configuration via environment variables (all optional, defaults shown):
 
-| Variable    | Default                    | Purpose                |
-| ----------- | -------------------------- | ---------------------- |
-| `HTTP_ADDR` | `:8080`                    | HTTP listen address    |
-| `MONGO_URI` | `mongodb://localhost:27017` | MongoDB connection URI |
+| Variable      | Default                     | Purpose                                                      |
+| ------------- | --------------------------- | ------------------------------------------------------------ |
+| `HTTP_ADDR`   | `:8080`                     | HTTP listen address                                          |
+| `MONGO_URI`   | `mongodb://localhost:27017` | MongoDB connection URI                                       |
+| `MONGO_DB`    | `thaimart`                  | MongoDB database name                                        |
+| `JWT_SECRET`  | auto-generated              | HS256 signing key — set it in production; without it tokens die on every restart |
+| `JWT_TTL`     | `1h`                        | Token lifetime                                               |
+| `BCRYPT_COST` | `10`                        | bcrypt cost factor (4–15)                                    |
+| `LOG_FORMAT`  | `text`                      | `text` or `json`                                             |
 
 Tear down:
 
