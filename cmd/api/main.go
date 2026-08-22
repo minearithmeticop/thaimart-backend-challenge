@@ -18,8 +18,12 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 
+	"github.com/minearithmeticop/thaimart-backend-challenge/internal/app/auth"
+	"github.com/minearithmeticop/thaimart-backend-challenge/internal/app/user"
 	"github.com/minearithmeticop/thaimart-backend-challenge/internal/config"
 	"github.com/minearithmeticop/thaimart-backend-challenge/internal/platform/httpapi"
+	"github.com/minearithmeticop/thaimart-backend-challenge/internal/platform/mongostore"
+	"github.com/minearithmeticop/thaimart-backend-challenge/internal/platform/security"
 )
 
 func main() {
@@ -41,6 +45,8 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// ---- Driven adapters --------------------------------------------------
+
 	// The v2 driver connects lazily; the ping is what actually proves the
 	// URI works, so a misconfigured environment fails fast at startup.
 	client, err := mongo.Connect(options.Client().ApplyURI(cfg.MongoURI))
@@ -52,12 +58,28 @@ func run() error {
 	if err := client.Ping(pingCtx, readpref.Primary()); err != nil {
 		return fmt.Errorf("pinging mongo at %s: %w", cfg.MongoURI, err)
 	}
-	slog.Info("mongo connected", "uri", cfg.MongoURI, "db", cfg.MongoDB)
 	defer client.Disconnect(context.Background())
+
+	indexCtx, cancelIndex := context.WithTimeout(ctx, 10*time.Second)
+	defer cancelIndex()
+	repo, err := mongostore.NewUserRepository(indexCtx, client.Database(cfg.MongoDB))
+	if err != nil {
+		return err
+	}
+
+	hasher := security.NewBcryptHasher(cfg.BcryptCost)
+	tokens := security.NewJWTManager(cfg.JWTSecret, cfg.JWTTTL)
+
+	// ---- Application core ---------------------------------------------------
+
+	users := user.NewService(repo, hasher, logger)
+	authSvc := auth.NewService(users, repo, hasher, tokens, logger)
+
+	// ---- Driving adapter ----------------------------------------------------
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           httpapi.NewRouter(mongoPinger{client}),
+		Handler:           httpapi.NewRouter(mongoPinger{client}, tokens, authSvc, users, logger),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
