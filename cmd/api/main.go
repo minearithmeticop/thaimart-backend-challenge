@@ -1,6 +1,6 @@
 // Command api is the entry point of the ThaiMart User Management API.
-// It wires the adapters together, serves HTTP and shuts down gracefully
-// on SIGINT/SIGTERM.
+// It wires the adapters together, serves HTTP and gRPC, and shuts down
+// gracefully on SIGINT/SIGTERM.
 package main
 
 import (
@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,11 +18,13 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
+	"google.golang.org/grpc"
 
 	"github.com/minearithmeticop/thaimart-backend-challenge/internal/app/auth"
 	"github.com/minearithmeticop/thaimart-backend-challenge/internal/app/report"
 	"github.com/minearithmeticop/thaimart-backend-challenge/internal/app/user"
 	"github.com/minearithmeticop/thaimart-backend-challenge/internal/config"
+	"github.com/minearithmeticop/thaimart-backend-challenge/internal/platform/grpcapi"
 	"github.com/minearithmeticop/thaimart-backend-challenge/internal/platform/httpapi"
 	"github.com/minearithmeticop/thaimart-backend-challenge/internal/platform/mongostore"
 	"github.com/minearithmeticop/thaimart-backend-challenge/internal/platform/security"
@@ -82,19 +85,31 @@ func run() error {
 	// shutdown stops it.
 	go report.NewUserCountReporter(repo, cfg.ReportEvery, logger).Run(ctx)
 
-	// ---- Driving adapter ----------------------------------------------------
+	// ---- Driving adapters ----------------------------------------------------
 
-	srv := &http.Server{
+	httpSrv := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           httpapi.NewRouter(mongoPinger{client}, tokens, authSvc, users, logger),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	errCh := make(chan error, 1)
+	grpcLis, err := net.Listen("tcp", cfg.GRPCAddr)
+	if err != nil {
+		return fmt.Errorf("listening on grpc %s: %w", cfg.GRPCAddr, err)
+	}
+	grpcSrv := grpcapi.NewServer(users, tokens, logger)
+
+	errCh := make(chan error, 2)
 	go func() {
 		slog.Info("http server listening", "addr", cfg.HTTPAddr)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			errCh <- err
+		if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- fmt.Errorf("http: %w", err)
+		}
+	}()
+	go func() {
+		slog.Info("grpc server listening", "addr", cfg.GRPCAddr)
+		if err := grpcSrv.Serve(grpcLis); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+			errCh <- fmt.Errorf("grpc: %w", err)
 		}
 	}()
 
@@ -102,10 +117,31 @@ func run() error {
 	case err := <-errCh:
 		return err
 	case <-ctx.Done():
-		slog.Info("shutting down http server")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		return srv.Shutdown(shutdownCtx)
+		slog.Info("shutting down")
+		shutdownHTTP(httpSrv)
+		shutdownGRPC(grpcSrv)
+		return nil
+	}
+}
+
+func shutdownHTTP(srv *http.Server) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		slog.Error("http shutdown failed", "err", err)
+	}
+}
+
+func shutdownGRPC(srv *grpc.Server) {
+	done := make(chan struct{})
+	go func() {
+		srv.GracefulStop()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		srv.Stop() // in-flight RPCs got their chance; force-stop now
 	}
 }
 
