@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+// user.v1 is the gRPC surface of the User Management API. It exposes the
+// two RPCs required by the coding test (CreateUser, GetUser);
+// authentication rides on the standard "authorization: Bearer <jwt>"
+// metadata key and is enforced by a unary interceptor.
+package user.v1;
+
+option go_package = "github.com/minearithmeticop/thaimart-backend-challenge/api/proto/user/v1;userv1";
+
+import "google/protobuf/timestamp.proto";
+
+service UserService {
+  // CreateUser registers a new user (name + email + password).
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+
+  // GetUser fetches a user by id.
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+}
+
+message User {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message CreateUserRequest {
+  string name = 1;
+  string email = 2;
+  string password = 3;
+}
+
+message CreateUserResponse {
+  User user = 1;
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message GetUserResponse {
+  User user = 1;
+}

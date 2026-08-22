@@ -28,6 +28,7 @@ Configuration via environment variables (all optional, defaults shown):
 | Variable        | Default                     | Purpose                               |
 | --------------- | --------------------------- | ------------------------------------- |
 | `HTTP_ADDR`     | `:8080`                     | HTTP listen address                   |
+| `GRPC_ADDR`     | `:50051`                    | gRPC listen address                   |
 | `MONGO_URI`     | `mongodb://localhost:27017` | MongoDB connection URI                |
 | `MONGO_DB`      | `thaimart`                  | MongoDB database name                 |
 | `JWT_SECRET`    | auto-generated              | HS256 signing key; set in production  |
@@ -58,6 +59,25 @@ curl -s -X POST http://localhost:8080/api/v1/auth/login -H "Content-Type: applic
 set TOKEN=<your-token>
 curl -s http://localhost:8080/api/v1/users -H "Authorization: Bearer %TOKEN%"
 ```
+
+## gRPC surface
+
+The same process also serves gRPC (default `:50051`, `GRPC_ADDR`), exposing
+`user.v1.UserService` with `CreateUser` and `GetUser`. Authentication uses
+the same JWTs as HTTP, passed as `authorization: Bearer <token>` metadata
+and enforced by a unary interceptor. Server reflection is enabled, so
+[grpcurl](https://github.com/fullstorydev/grpcurl) works without proto
+files:
+
+```shell
+set TOKEN=<your-token>
+grpcurl -plaintext -H "authorization: Bearer %TOKEN%" -d "{\"name\":\"gRPC User\",\"email\":\"grpc@example.com\",\"password\":\"P@ssw0rd1\"}" localhost:50051 user.v1.UserService/CreateUser
+grpcurl -plaintext -H "authorization: Bearer %TOKEN%" -d "{\"id\":\"<user-id>\"}" localhost:50051 user.v1.UserService/GetUser
+```
+
+The proto definition lives in `api/proto/user/v1/user.proto`; regenerate
+the Go code after editing it with `buf generate api/proto` (see
+`buf.gen.yaml`).
 
 ## Browse the data with mongo-express (optional)
 

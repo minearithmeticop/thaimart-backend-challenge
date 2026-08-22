@@ -14,6 +14,9 @@ func TestDefaults(t *testing.T) {
 	if c.HTTPAddr != ":8080" {
 		t.Errorf("HTTPAddr = %q", c.HTTPAddr)
 	}
+	if c.GRPCAddr != ":50051" {
+		t.Errorf("GRPCAddr = %q", c.GRPCAddr)
+	}
 	if c.MongoURI != "mongodb://localhost:27017" {
 		t.Errorf("MongoURI = %q", c.MongoURI)
 	}
@@ -39,6 +42,7 @@ func TestDefaults(t *testing.T) {
 
 func TestOverrides(t *testing.T) {
 	t.Setenv("HTTP_ADDR", ":9000")
+	t.Setenv("GRPC_ADDR", ":60051")
 	t.Setenv("MONGO_URI", "mongodb://mongo:27017")
 	t.Setenv("MONGO_DB", "other")
 	t.Setenv("JWT_SECRET", "0123456789abcdef0123456789abcdef")
@@ -52,7 +56,7 @@ func TestOverrides(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 
-	if c.HTTPAddr != ":9000" || c.MongoURI != "mongodb://mongo:27017" || c.MongoDB != "other" {
+	if c.HTTPAddr != ":9000" || c.GRPCAddr != ":60051" || c.MongoURI != "mongodb://mongo:27017" || c.MongoDB != "other" {
 		t.Errorf("string overrides mismatch: %+v", c)
 	}
 	if c.JWTSecret != "0123456789abcdef0123456789abcdef" {

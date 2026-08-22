@@ -16,6 +16,7 @@ import (
 // Config groups every runtime knob of the service.
 type Config struct {
 	HTTPAddr    string
+	GRPCAddr    string
 	MongoURI    string
 	MongoDB     string
 	JWTSecret   string
@@ -31,6 +32,7 @@ type Config struct {
 func Load() (Config, error) {
 	c := Config{
 		HTTPAddr:   envOr("HTTP_ADDR", ":8080"),
+		GRPCAddr:   envOr("GRPC_ADDR", ":50051"),
 		MongoURI:   envOr("MONGO_URI", "mongodb://localhost:27017"),
 		MongoDB:    envOr("MONGO_DB", "thaimart"),
 		JWTSecret:  os.Getenv("JWT_SECRET"),
