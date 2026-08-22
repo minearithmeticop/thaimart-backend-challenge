@@ -1,5 +1,8 @@
 # ThaiMart — User Management API
 
+[![CI](https://github.com/minearithmeticop/thaimart-backend-challenge/actions/workflows/ci.yml/badge.svg)](https://github.com/minearithmeticop/thaimart-backend-challenge/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/minearithmeticop/thaimart-backend-challenge/coverage/coverage.json)](https://github.com/minearithmeticop/thaimart-backend-challenge/actions/workflows/ci.yml)
+
 Backend coding challenge: a RESTful user management API in Go with gin,
 MongoDB persistence and JWT authentication, built on a hexagonal
 (ports & adapters) structure.
