@@ -28,6 +28,8 @@ jobs:
       - run: go build ./...
       - run: go vet ./...
       - run: go test ./... -race -covermode=atomic -coverprofile=coverage.out
+      - name: Exclude generated protobuf code from coverage
+        run: grep -v 'api/proto/.*\.pb\.go' coverage.out > coverage.tmp && mv coverage.tmp coverage.out
       - name: Summarize coverage
         run: |
           {
