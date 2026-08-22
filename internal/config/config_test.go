@@ -29,6 +29,9 @@ func TestDefaults(t *testing.T) {
 	if c.LogFormat != "text" {
 		t.Errorf("LogFormat = %q", c.LogFormat)
 	}
+	if c.ReportEvery != 10*time.Second {
+		t.Errorf("ReportEvery = %s", c.ReportEvery)
+	}
 	if c.JWTSecret == "" {
 		t.Error("expected an ephemeral secret to be generated when JWT_SECRET is unset")
 	}
@@ -42,6 +45,7 @@ func TestOverrides(t *testing.T) {
 	t.Setenv("JWT_TTL", "1h30m")
 	t.Setenv("BCRYPT_COST", "12")
 	t.Setenv("LOG_FORMAT", "json")
+	t.Setenv("REPORT_EVERY", "45s")
 
 	c, err := Load()
 	if err != nil {
@@ -63,6 +67,9 @@ func TestOverrides(t *testing.T) {
 	if c.LogFormat != "json" {
 		t.Errorf("LogFormat = %q", c.LogFormat)
 	}
+	if c.ReportEvery != 45*time.Second {
+		t.Errorf("ReportEvery = %s", c.ReportEvery)
+	}
 }
 
 func TestInvalidValuesFailFast(t *testing.T) {
@@ -74,11 +81,14 @@ func TestInvalidValuesFailFast(t *testing.T) {
 		{"BCRYPT_COST", "3"},
 		{"BCRYPT_COST", "16"},
 		{"LOG_FORMAT", "xml"},
+		{"REPORT_EVERY", "not-a-duration"},
+		{"REPORT_EVERY", "0s"},
+		{"REPORT_EVERY", "-5m"},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.key+"="+tc.value, func(t *testing.T) {
-			for _, k := range []string{"JWT_TTL", "BCRYPT_COST", "LOG_FORMAT"} {
+			for _, k := range []string{"JWT_TTL", "BCRYPT_COST", "LOG_FORMAT", "REPORT_EVERY"} {
 				t.Setenv(k, "")
 			}
 			t.Setenv(tc.key, tc.value)

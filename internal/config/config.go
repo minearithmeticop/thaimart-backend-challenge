@@ -15,13 +15,14 @@ import (
 
 // Config groups every runtime knob of the service.
 type Config struct {
-	HTTPAddr   string
-	MongoURI   string
-	MongoDB    string
-	JWTSecret  string
-	JWTTTL     time.Duration
-	BcryptCost int
-	LogFormat  string // "text" or "json"
+	HTTPAddr    string
+	MongoURI    string
+	MongoDB     string
+	JWTSecret   string
+	JWTTTL      time.Duration
+	BcryptCost  int
+	LogFormat   string // "text" or "json"
+	ReportEvery time.Duration
 }
 
 // Load builds a Config from the environment. Unset values fall back to
@@ -41,6 +42,9 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	if c.BcryptCost, err = envInt("BCRYPT_COST", 10); err != nil {
+		return Config{}, err
+	}
+	if c.ReportEvery, err = envDuration("REPORT_EVERY", 10*time.Second); err != nil {
 		return Config{}, err
 	}
 
@@ -64,6 +68,9 @@ func Load() (Config, error) {
 	}
 	if c.LogFormat != "text" && c.LogFormat != "json" {
 		return Config{}, fmt.Errorf("LOG_FORMAT must be %q or %q, got %q", "text", "json", c.LogFormat)
+	}
+	if c.ReportEvery <= 0 {
+		return Config{}, fmt.Errorf("REPORT_EVERY must be positive, got %s", c.ReportEvery)
 	}
 	return c, nil
 }

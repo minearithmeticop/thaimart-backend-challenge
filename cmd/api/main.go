@@ -19,6 +19,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 
 	"github.com/minearithmeticop/thaimart-backend-challenge/internal/app/auth"
+	"github.com/minearithmeticop/thaimart-backend-challenge/internal/app/report"
 	"github.com/minearithmeticop/thaimart-backend-challenge/internal/app/user"
 	"github.com/minearithmeticop/thaimart-backend-challenge/internal/config"
 	"github.com/minearithmeticop/thaimart-backend-challenge/internal/platform/httpapi"
@@ -74,6 +75,12 @@ func run() error {
 
 	users := user.NewService(repo, hasher, logger)
 	authSvc := auth.NewService(users, repo, hasher, tokens, logger)
+
+	// ---- Background jobs -----------------------------------------------------
+
+	// Logs the total user count once per interval; ctx cancellation on
+	// shutdown stops it.
+	go report.NewUserCountReporter(repo, cfg.ReportEvery, logger).Run(ctx)
 
 	// ---- Driving adapter ----------------------------------------------------
 
