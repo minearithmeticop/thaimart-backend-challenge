@@ -42,6 +42,32 @@ jobs:
           name: coverage
           path: coverage.out
 
+  # Build the actual image and exercise the full stack over HTTP —
+  # "test the artifact you ship".
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the image
+        run: docker build -t thaimart-api:ci .
+      - name: Bring the stack up
+        run: docker compose -f deploy/compose.yaml up -d --wait
+      - name: Smoke test over HTTP
+        run: |
+          set -euo pipefail
+          curl -fsS http://localhost:8080/healthz
+          curl -fsS -X POST http://localhost:8080/api/v1/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"name":"CI Smoke","email":"ci-smoke@example.com","password":"P@ssw0rd1"}'
+          token=$(curl -fsS -X POST http://localhost:8080/api/v1/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"ci-smoke@example.com","password":"P@ssw0rd1"}' \
+            | sed -E 's/.*"token":"([^"]+)".*/\1/')
+          curl -fsS http://localhost:8080/api/v1/users -H "Authorization: Bearer $token"
+      - name: Tear down
+        if: always()
+        run: docker compose -f deploy/compose.yaml down -v
+
   badge:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
