@@ -1,0 +1,8 @@
+.git
+.github
+bin
+tmp
+deploy
+cover.out
+coverage.out
+*.exe
