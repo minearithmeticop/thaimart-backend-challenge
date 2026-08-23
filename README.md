@@ -13,37 +13,7 @@ Dependencies point inwards: transports and storage are adapters around
 a framework-free core. Both HTTP and gRPC reuse the same use cases,
 validation and JWT verification.
 
-```mermaid
-flowchart LR
-    client[Client]
-
-    subgraph driving[Driving adapters]
-        http[httpapi - gin]
-        grpc[grpcapi]
-    end
-
-    subgraph core[Application core - use cases + ports]
-        authsvc[auth use case]
-        usersvc[user use case]
-        ports[UserRepository / PasswordHasher / TokenManager]
-    end
-
-    subgraph driven[Driven adapters]
-        mongostore[mongostore - MongoDB]
-        security[security - bcrypt + JWT]
-    end
-
-    client --> http
-    client --> grpc
-    http --> authsvc
-    http --> usersvc
-    grpc --> usersvc
-    authsvc --> usersvc
-    authsvc --> ports
-    usersvc --> ports
-    security -. implements .-> ports
-    mongostore -. implements .-> ports
-```
+![Architecture](docs/architecture.png)
 
 ```text
 cmd/api            entrypoint: config → adapters → serve HTTP + gRPC
