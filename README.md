@@ -9,11 +9,25 @@ MongoDB persistence and JWT authentication, built on a hexagonal
 
 ## Run locally
 
+### Everything in one command (Docker)
+
+```shell
+docker compose -f deploy/compose.yaml up -d --build
+docker compose -f deploy/compose.yaml ps     # wait until thaimart-api is healthy
+curl http://localhost:8080/healthz
+```
+
+This brings up the API (HTTP `:8080`, gRPC `:50051`) and MongoDB
+together. Tear down with `docker compose -f deploy/compose.yaml down`
+(add `-v` to wipe the data volume too).
+
+### From source (development loop)
+
 Prerequisites: Go 1.26+, Docker.
 
-```bash
-# 1. Start infrastructure (MongoDB) and wait until it reports healthy
-docker compose -f deploy/compose.yaml up -d
+```shell
+# 1. Start MongoDB only and wait until it reports healthy
+docker compose -f deploy/compose.yaml up -d mongo
 docker compose -f deploy/compose.yaml ps
 
 # 2. Run the API (connects to MongoDB, serves /healthz)
