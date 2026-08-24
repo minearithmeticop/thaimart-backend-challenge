@@ -7,6 +7,9 @@ Backend coding challenge: a RESTful user management API in Go with gin,
 MongoDB persistence and JWT authentication — plus a gRPC surface — built
 on a hexagonal (ports & adapters) structure.
 
+Part 2 of the challenge, the Lottery Search System, is delivered as a
+design document: [docs/lottery-design.md](docs/lottery-design.md).
+
 ## Architecture
 
 Dependencies point inwards: transports and storage are adapters around
